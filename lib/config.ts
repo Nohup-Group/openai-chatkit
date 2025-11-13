@@ -19,7 +19,7 @@ export const STARTER_PROMPTS: StartScreenPrompt[] = [
   },
 ];
 
-export const PLACEHOLDER_INPUT = "schlaue Rechtsfrage...";
+export const PLACEHOLDER_INPUT = "Schlaue Rechtsfrage...";
 
 export const GREETING = "Wie kann ich Ihnen helfen, liebe RuP-Mitarbeitende?";
 
