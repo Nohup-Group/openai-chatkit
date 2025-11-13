@@ -1,5 +1,7 @@
 "use client";
 
+// Staging touch: no functional change, just forcing a redeploy.
+
 // Touching this file to trigger a fresh build; no functional changes.
 
 import { useCallback, useEffect, useRef, useState } from "react";
