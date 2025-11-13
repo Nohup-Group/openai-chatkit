@@ -1,5 +1,7 @@
 "use client";
 
+// Touching this file to trigger a fresh build; no functional changes.
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChatKit, useChatKit } from "@openai/chatkit-react";
 import {
