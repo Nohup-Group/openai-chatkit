@@ -13,7 +13,7 @@ interface ThreadItem {
 }
 
 interface ThreadsResponse {
-  data?: Array<{ id: string }>;
+  data?: Array<{ id: string; title?: string | null }>;
 }
 
 interface ItemsResponse {
@@ -57,6 +57,7 @@ export async function GET(): Promise<Response> {
 
     const threads = (await threadsRes.json()) as ThreadsResponse;
     const threadId = threads.data?.[0]?.id;
+    const threadTitle = threads.data?.[0]?.title;
 
     if (!threadId) {
       return Response.json({ error: "No thread found for user" }, { status: 404 });
@@ -136,7 +137,7 @@ export async function GET(): Promise<Response> {
       );
     }
 
-    return Response.json({ text, threadId });
+    return Response.json({ text, threadId, threadTitle });
   } catch (error) {
     console.error("[thread-content] Unexpected error:", error);
     return Response.json(

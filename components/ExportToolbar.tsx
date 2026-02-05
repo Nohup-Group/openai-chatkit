@@ -27,7 +27,7 @@ export function ExportToolbar() {
         return;
       }
 
-      const data = parseAgentOutput(result.text);
+      const data = parseAgentOutput(result.text, result.threadTitle);
 
       if (mode === "docx") {
         await generateAndDownloadDocx(data);

@@ -9,7 +9,7 @@ const SUBSECTION_PATTERN = /^###\s+(.+)/;
 // Match sources section
 const SOURCES_PATTERN = /^##?\s*Quellen/i;
 
-export function parseAgentOutput(text: string): DocxData {
+export function parseAgentOutput(text: string, threadTitle?: string | null): DocxData {
   const lines = text.split("\n");
 
   // Find first main section to separate intro from content
@@ -28,21 +28,8 @@ export function parseAgentOutput(text: string): DocxData {
     executiveSummary = introLines.join("\n").trim() || undefined;
   }
 
-  // Generate a short title from first section or default
-  let title = "Rechtsgutachten";
-  for (let i = 0; i < lines.length; i++) {
-    const match = lines[i].trim().match(MAIN_SECTION_PATTERN);
-    if (match) {
-      // Extract topic from first section heading
-      const heading = lines[i].replace(MAIN_SECTION_PATTERN, "").trim();
-      // Take first part before colon or use whole heading
-      const topicMatch = heading.match(/^([^:]+)/);
-      if (topicMatch && topicMatch[1].length > 5) {
-        title = `Rechtsgutachten: ${topicMatch[1].trim()}`;
-      }
-      break;
-    }
-  }
+  // Use thread title from ChatKit API, or fall back to default
+  const title = threadTitle || "Rechtsgutachten";
 
   // Parse sections
   const sections: Section[] = [];
