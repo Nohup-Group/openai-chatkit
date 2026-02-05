@@ -126,28 +126,28 @@ export function createLegalMemoDocument(data: DocxData, options?: TemplateOption
         {
           id: "Normal",
           name: "Normal",
-          run: { font: "Times New Roman", size: 22 },
+          run: { font: "Meta Pro", size: 21 },  // 10.5pt
           paragraph: { spacing: { after: 220, line: 264 } },
         },
         {
           id: "Memo1",
           name: "Memo1",
           basedOn: "Normal",
-          run: { bold: true, size: 24 },
+          run: { bold: true, size: 24 },  // 12pt headings
           paragraph: { spacing: { before: 400, after: 200 } },
         },
         {
           id: "Memo2",
           name: "Memo2",
           basedOn: "Normal",
-          run: { bold: true, size: 22 },
+          run: { bold: true, size: 21 },  // 10.5pt
           paragraph: { spacing: { before: 300, after: 150 } },
         },
         {
           id: "Memo3",
           name: "Memo3",
           basedOn: "Normal",
-          run: { bold: true, size: 22 },
+          run: { bold: true, size: 21 },  // 10.5pt
           paragraph: { spacing: { before: 200, after: 100 } },
         },
         {
