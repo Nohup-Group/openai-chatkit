@@ -7,7 +7,9 @@ const CHATKIT_API_BASE = "https://api.openai.com";
 
 interface ThreadItem {
   type: string;
-  content?: Array<{ type: string; text?: string }>;
+  content?: Array<{ type: string; text?: string }> | string;
+  text?: string;
+  [key: string]: unknown;
 }
 
 interface ThreadsResponse {
@@ -77,29 +79,61 @@ export async function GET(): Promise<Response> {
 
     const items = (await itemsRes.json()) as ItemsResponse;
 
-    // 3. Find last assistant message
+    // Log all item types for debugging
+    const itemTypes = items.data?.map((item: ThreadItem) => item.type) ?? [];
+    console.log("[thread-content] Thread items types:", itemTypes);
+    console.log("[thread-content] Full items data:", JSON.stringify(items.data?.slice(0, 3), null, 2));
+
+    // 3. Find last assistant message (try multiple possible type names)
     const assistantMsg = items.data?.find(
-      (item) => item.type === "assistant_message"
+      (item) =>
+        item.type === "assistant_message" ||
+        item.type === "message" ||
+        item.type === "assistant" ||
+        item.type === "response"
     );
 
     if (!assistantMsg) {
       return Response.json(
-        { error: "No assistant message found in thread" },
+        {
+          error: "No assistant message found in thread",
+          availableTypes: itemTypes,
+          itemCount: items.data?.length ?? 0
+        },
         { status: 404 }
       );
     }
 
-    // 4. Extract text from content array
-    const text =
-      assistantMsg.content
-        ?.filter((c) => c.type === "output_text")
+    // 4. Extract text from content array (try multiple possible structures)
+    console.log("[thread-content] Assistant message:", JSON.stringify(assistantMsg, null, 2));
+
+    let text: string | null = null;
+
+    // Try content array with output_text type
+    if (Array.isArray(assistantMsg.content)) {
+      text = assistantMsg.content
+        ?.filter((c) => c.type === "output_text" || c.type === "text")
         ?.map((c) => c.text)
         ?.filter(Boolean)
         ?.join("\n") ?? null;
+    }
+
+    // Fallback: try direct text property
+    if (!text && typeof assistantMsg.text === "string") {
+      text = assistantMsg.text;
+    }
+
+    // Fallback: try content as string
+    if (!text && typeof assistantMsg.content === "string") {
+      text = assistantMsg.content;
+    }
 
     if (!text) {
       return Response.json(
-        { error: "Assistant message has no text content" },
+        {
+          error: "Assistant message has no text content",
+          messageStructure: Object.keys(assistantMsg)
+        },
         { status: 404 }
       );
     }
