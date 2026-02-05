@@ -1,114 +1,159 @@
 import type { DocxData, Section } from "./types";
 
-// Match main sections: "## 1)", "## 2)", "# 1.", "1.", "1)"
-const MAIN_SECTION_PATTERN = /^#{1,2}\s*(\d+)\)/;
-
-// Match subsections: "### Title" (without number)
-const SUBSECTION_PATTERN = /^###\s+(.+)/;
+// Match markdown headers: ## HEADING, ### Heading, #### Heading
+const H2_PATTERN = /^##\s+(.+)$/;
+const H3_PATTERN = /^###\s+(.+)$/;
+const H4_PATTERN = /^####\s+(.+)$/;
 
 // Match sources section
-const SOURCES_PATTERN = /^##?\s*Quellen/i;
+const SOURCES_PATTERN = /^##\s*QUELLEN\s*$/i;
+
+// Match end section (to stop parsing)
+const END_PATTERN = /^##\s*ABSCHLUSS\s*$/i;
+
+type HeadingType = "h2" | "h3" | "h4" | "sources" | "end";
+
+function detectHeading(line: string): { type: HeadingType | null; text: string } {
+  const trimmed = line.trim();
+
+  // Check for sources section first
+  if (SOURCES_PATTERN.test(trimmed)) {
+    return { type: "sources", text: "Quellen" };
+  }
+
+  // Check for end section
+  if (END_PATTERN.test(trimmed)) {
+    return { type: "end", text: "Abschluss" };
+  }
+
+  // Check for H4 (####)
+  const h4Match = trimmed.match(H4_PATTERN);
+  if (h4Match) {
+    return { type: "h4", text: h4Match[1].trim() };
+  }
+
+  // Check for H3 (###)
+  const h3Match = trimmed.match(H3_PATTERN);
+  if (h3Match) {
+    return { type: "h3", text: h3Match[1].trim() };
+  }
+
+  // Check for H2 (##)
+  const h2Match = trimmed.match(H2_PATTERN);
+  if (h2Match) {
+    return { type: "h2", text: h2Match[1].trim() };
+  }
+
+  return { type: null, text: "" };
+}
 
 export function parseAgentOutput(text: string, threadTitle?: string | null): DocxData {
   const lines = text.split("\n");
 
-  // Find first main section to separate intro from content
-  let firstSectionIdx = -1;
+  // Find all headings and their positions
+  const headings: Array<{ idx: number; type: HeadingType; text: string }> = [];
+
   for (let i = 0; i < lines.length; i++) {
-    if (MAIN_SECTION_PATTERN.test(lines[i].trim()) || SOURCES_PATTERN.test(lines[i].trim())) {
-      firstSectionIdx = i;
-      break;
+    const result = detectHeading(lines[i]);
+    if (result.type) {
+      headings.push({ idx: i, type: result.type, text: result.text });
     }
   }
 
-  // Extract executive summary (everything before first section)
+  // Find first main section (h2) to separate intro from content
+  const firstH2Idx = headings.findIndex(h => h.type === "h2");
+  const firstSectionLineIdx = firstH2Idx >= 0 ? headings[firstH2Idx].idx : -1;
+
+  // Extract executive summary (everything before first ## section)
   let executiveSummary: string | undefined;
-  if (firstSectionIdx > 0) {
-    const introLines = lines.slice(0, firstSectionIdx);
-    executiveSummary = introLines.join("\n").trim() || undefined;
+  if (firstSectionLineIdx > 0) {
+    const introLines = lines.slice(0, firstSectionLineIdx);
+    executiveSummary = cleanMarkdown(introLines.join("\n").trim()) || undefined;
   }
 
   // Use thread title from ChatKit API, or fall back to default
   const title = threadTitle || "Rechtsgutachten";
 
-  // Parse sections
+  // Parse sections with hierarchy
   const sections: Section[] = [];
-  let sourcesStartIdx = -1;
-  let currentMainLevel = 0;
+  let mainSectionCount = 0;
   let subSectionCount = 0;
+  let subSubSectionCount = 0;
 
-  for (let i = firstSectionIdx; i < lines.length && i >= 0; i++) {
-    const line = lines[i].trim();
+  for (let h = 0; h < headings.length; h++) {
+    const heading = headings[h];
 
-    // Check for sources section
-    if (SOURCES_PATTERN.test(line)) {
-      sourcesStartIdx = i;
+    // Stop at sources or end
+    if (heading.type === "sources" || heading.type === "end") {
       break;
     }
 
-    // Check for main section (## 1), ## 2), etc.)
-    const mainMatch = line.match(MAIN_SECTION_PATTERN);
-    if (mainMatch) {
-      currentMainLevel = parseInt(mainMatch[1], 10);
+    // Find where this section ends (next heading or sources/end)
+    const nextHeadingIdx = h + 1 < headings.length ? headings[h + 1].idx : lines.length;
+
+    // Extract body (lines between this heading and next)
+    const bodyLines = lines.slice(heading.idx + 1, nextHeadingIdx);
+    const body = cleanMarkdown(bodyLines.join("\n").trim());
+
+    if (heading.type === "h2") {
+      // Main section (## AUSGANGSSITUATION)
+      mainSectionCount++;
       subSectionCount = 0;
+      subSubSectionCount = 0;
 
-      // Find section body (until next section or end)
-      const bodyLines: string[] = [];
-      for (let j = i + 1; j < lines.length; j++) {
-        const nextLine = lines[j].trim();
-        if (MAIN_SECTION_PATTERN.test(nextLine) || SUBSECTION_PATTERN.test(nextLine) || SOURCES_PATTERN.test(nextLine)) {
-          break;
-        }
-        bodyLines.push(lines[j]);
-      }
-
-      const heading = line.replace(MAIN_SECTION_PATTERN, "").trim();
       sections.push({
-        heading: cleanMarkdown(heading),
-        body: cleanMarkdown(bodyLines.join("\n").trim()),
-        level: String(currentMainLevel),
+        heading: heading.text,
+        body,
+        level: String(mainSectionCount),
         style: "Memo1",
       });
-      continue;
-    }
-
-    // Check for subsection (### Title)
-    const subMatch = line.match(SUBSECTION_PATTERN);
-    if (subMatch && currentMainLevel > 0) {
+    } else if (heading.type === "h3") {
+      // Subsection (### Fristlose Kündigung...)
       subSectionCount++;
-
-      // Find subsection body
-      const bodyLines: string[] = [];
-      for (let j = i + 1; j < lines.length; j++) {
-        const nextLine = lines[j].trim();
-        if (MAIN_SECTION_PATTERN.test(nextLine) || SUBSECTION_PATTERN.test(nextLine) || SOURCES_PATTERN.test(nextLine)) {
-          break;
-        }
-        bodyLines.push(lines[j]);
-      }
+      subSubSectionCount = 0;
 
       sections.push({
-        heading: cleanMarkdown(subMatch[1]),
-        body: cleanMarkdown(bodyLines.join("\n").trim()),
-        level: `${currentMainLevel}.${subSectionCount}`,
+        heading: heading.text,
+        body,
+        level: mainSectionCount > 0 ? `${mainSectionCount}.${subSectionCount}` : String(subSectionCount),
         style: "Memo2",
+      });
+    } else if (heading.type === "h4") {
+      // Sub-subsection (#### Tragfähigen...)
+      subSubSectionCount++;
+
+      const level = mainSectionCount > 0 && subSectionCount > 0
+        ? `${mainSectionCount}.${subSectionCount}.${subSubSectionCount}`
+        : subSectionCount > 0
+          ? `${subSectionCount}.${subSubSectionCount}`
+          : String(subSubSectionCount);
+
+      sections.push({
+        heading: heading.text,
+        body,
+        level,
+        style: "Memo3",
       });
     }
   }
 
   // Extract sources
   let sources: string | undefined;
-  if (sourcesStartIdx > 0) {
-    const sourceLines = lines.slice(sourcesStartIdx + 1);
-    sources = sourceLines.join("\n").trim() || undefined;
+  const sourcesHeading = headings.find(h => h.type === "sources");
+  if (sourcesHeading) {
+    // Find end of sources (either ABSCHLUSS or end of file)
+    const endHeading = headings.find(h => h.type === "end");
+    const endIdx = endHeading ? endHeading.idx : lines.length;
+    const sourceLines = lines.slice(sourcesHeading.idx + 1, endIdx);
+    sources = cleanMarkdown(sourceLines.join("\n").trim()) || undefined;
   }
 
   return {
-    report_title: title.slice(0, 80), // Limit title length
+    report_title: title.slice(0, 80),
     date: new Date().toLocaleDateString("de-DE"),
-    executiveSummary: executiveSummary ? cleanMarkdown(executiveSummary) : undefined,
+    executiveSummary,
     sections,
-    sources: sources ? cleanMarkdown(sources) : undefined,
+    sources,
   };
 }
 
@@ -116,8 +161,8 @@ export function parseAgentOutput(text: string, threadTitle?: string | null): Doc
 function cleanMarkdown(text: string): string {
   return text
     // Keep **bold** markers - they're handled by the template
-    // Remove ## headers that might be in body text
-    .replace(/^#{1,3}\s*/gm, "")
+    // Remove standalone ## headers that might be in body text
+    .replace(/^#{1,4}\s+/gm, "")
     // Clean up extra whitespace
     .replace(/\n{3,}/g, "\n\n")
     .trim();
