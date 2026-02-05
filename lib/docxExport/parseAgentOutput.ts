@@ -1,7 +1,12 @@
 import type { DocxData, Section } from "./types";
 
-const SECTION_PATTERN = /^(\d+(?:\.\d+)*)\.\s+/;
-const SOURCES_PATTERN = /^Quellen\s*$/i;
+// Match various section formats:
+// "1. ", "1) ", "### 1) ", "**1)** ", "**1.**"
+const SECTION_PATTERN = /^(?:\*\*)?(?:#{1,3}\s*)?(\d+(?:\.\d+)*)[\.\)]\**\s*/;
+
+// Match sources section header variants
+const SOURCES_PATTERN = /^(?:Quellen|Beck-online-Quellen|Quellenangaben)/i;
+
 const RESULT_PATTERN = /^Ergebnis:?\s*/i;
 
 export function parseAgentOutput(text: string): DocxData {

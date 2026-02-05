@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-  extractLastAgentResponse,
   parseAgentOutput,
   generateAndDownloadDocx,
   copyRichToClipboard,
@@ -16,16 +15,20 @@ export function ExportToolbar() {
   const handleExport = async (mode: "docx" | "clipboard") => {
     setStatus("loading");
 
-    const response = extractLastAgentResponse();
-    if (!response) {
-      setStatus("error");
-      setTimeout(() => setStatus("idle"), 2000);
-      return;
-    }
-
-    const data = parseAgentOutput(response.text);
-
     try {
+      // Fetch thread content from our backend API
+      const res = await fetch("/api/export/thread-content");
+      const result = await res.json();
+
+      if (!res.ok || !result.text) {
+        console.error("Failed to get thread content:", result.error);
+        setStatus("error");
+        setTimeout(() => setStatus("idle"), 2000);
+        return;
+      }
+
+      const data = parseAgentOutput(result.text);
+
       if (mode === "docx") {
         await generateAndDownloadDocx(data);
       } else {

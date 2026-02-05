@@ -13,8 +13,3 @@ export interface DocxData {
   sections: Section[];
   sources?: string;
 }
-
-export interface ExtractedResponse {
-  text: string;
-  html: string;
-}
