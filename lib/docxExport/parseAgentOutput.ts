@@ -150,7 +150,7 @@ export function parseAgentOutput(text: string, threadTitle?: string | null): Doc
 
   return {
     report_title: title.slice(0, 80),
-    date: new Date().toLocaleDateString("de-DE"),
+    date: new Date().toLocaleDateString("de-DE", { day: "numeric", month: "long", year: "numeric" }),
     executiveSummary,
     sections,
     sources,
