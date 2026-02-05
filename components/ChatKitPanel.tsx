@@ -521,7 +521,7 @@ export function ChatKitPanel({
       </div>
 
       <div className="relative flex flex-1 flex-col overflow-hidden rounded-2xl bg-white pb-8 shadow-xl transition-colors">
-        <div className="absolute top-4 right-4 z-10">
+        <div className="absolute top-4 left-4 z-10">
           <ExportToolbar />
         </div>
         <ChatKit
