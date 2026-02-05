@@ -11,6 +11,7 @@ import {
   getThemeConfig,
 } from "@/lib/config";
 import { ErrorOverlay } from "./ErrorOverlay";
+import { ExportToolbar } from "./ExportToolbar";
 import PromptSidebar from "./PromptSidebar";
 import type { AggregatedModelUsage } from "./TokenUsagePanel";
 import type { ColorScheme } from "@/hooks/useColorScheme";
@@ -520,6 +521,9 @@ export function ChatKitPanel({
       </div>
 
       <div className="relative flex flex-1 flex-col overflow-hidden rounded-2xl bg-white pb-8 shadow-xl transition-colors">
+        <div className="absolute top-4 right-4 z-10">
+          <ExportToolbar />
+        </div>
         <ChatKit
           key={widgetInstanceKey}
           control={control}
