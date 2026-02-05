@@ -84,13 +84,11 @@ export async function GET(): Promise<Response> {
     console.log("[thread-content] Thread items types:", itemTypes);
     console.log("[thread-content] Full items data:", JSON.stringify(items.data?.slice(0, 3), null, 2));
 
-    // 3. Find last assistant message (try multiple possible type names)
+    // 3. Find last assistant message (types are prefixed with "chatkit.")
     const assistantMsg = items.data?.find(
       (item) =>
-        item.type === "assistant_message" ||
-        item.type === "message" ||
-        item.type === "assistant" ||
-        item.type === "response"
+        item.type === "chatkit.assistant_message" ||
+        item.type === "assistant_message"
     );
 
     if (!assistantMsg) {
