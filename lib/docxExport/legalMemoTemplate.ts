@@ -2,19 +2,27 @@ import {
   Document,
   Paragraph,
   TextRun,
+  ImageRun,
+  Header,
   AlignmentType,
   convertInchesToTwip,
+  TabStopPosition,
+  TabStopType,
 } from "docx";
 import type { DocxData } from "./types";
 
-export function createLegalMemoDocument(data: DocxData): Document {
+export interface TemplateOptions {
+  logoData?: ArrayBuffer | null;
+}
+
+export function createLegalMemoDocument(data: DocxData, options?: TemplateOptions): Document {
   const children: Paragraph[] = [];
 
   // TITLE BLOCK
   children.push(
-    new Paragraph({ text: "", spacing: { after: 220 } }),
+    new Paragraph({ text: "", spacing: { after: 400 } }), // Space after header
     new Paragraph({
-      children: [new TextRun({ text: data.report_title, size: 24 })],
+      children: [new TextRun({ text: data.report_title, size: 28, bold: true })],
       alignment: AlignmentType.CENTER,
       spacing: { after: 220, line: 264 },
     })
@@ -25,16 +33,15 @@ export function createLegalMemoDocument(data: DocxData): Document {
       new Paragraph({
         children: [new TextRun({ text: data.subtitle, size: 24 })],
         alignment: AlignmentType.CENTER,
-        spacing: { after: 220 },
+        spacing: { after: 400 },
       })
     );
   }
 
-  children.push(new Paragraph({ text: "", spacing: { after: 220 } }));
-
   // EXECUTIVE SUMMARY
   if (data.executiveSummary) {
     children.push(...bodyToParagraphs(data.executiveSummary));
+    children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
   }
 
   // SECTIONS
@@ -67,6 +74,51 @@ export function createLegalMemoDocument(data: DocxData): Document {
     );
     children.push(...bodyToParagraphs(data.sources));
   }
+
+  // Create header with logo and date
+  const headerChildren: Paragraph[] = [];
+
+  // If we have a logo, create a two-column layout: text left, logo right
+  if (options?.logoData) {
+    headerChildren.push(
+      new Paragraph({
+        children: [
+          new TextRun({ text: `Entwurf R&P: ${data.date}`, size: 18, color: "666666" }),
+          new TextRun({ text: "\t" }), // Tab to push logo right
+          new ImageRun({
+            data: options.logoData,
+            transformation: {
+              width: 140,
+              height: 25,
+            },
+            type: "png",
+          }),
+        ],
+        tabStops: [
+          {
+            type: TabStopType.RIGHT,
+            position: TabStopPosition.MAX,
+          },
+        ],
+        spacing: { after: 200 },
+      })
+    );
+  } else {
+    // No logo, just the text
+    headerChildren.push(
+      new Paragraph({
+        children: [
+          new TextRun({ text: `Entwurf R&P: ${data.date}`, size: 18, color: "666666" }),
+        ],
+        alignment: AlignmentType.LEFT,
+        spacing: { after: 200 },
+      })
+    );
+  }
+
+  const header = new Header({
+    children: headerChildren,
+  });
 
   return new Document({
     styles: {
@@ -114,6 +166,9 @@ export function createLegalMemoDocument(data: DocxData): Document {
       {
         properties: {
           page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } },
+        },
+        headers: {
+          default: header,
         },
         children,
       },
