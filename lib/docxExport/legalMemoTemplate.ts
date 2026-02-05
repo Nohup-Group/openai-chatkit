@@ -76,15 +76,13 @@ export function createLegalMemoDocument(data: DocxData, options?: TemplateOption
   }
 
   // Create header with logo and date
+  // Layout: Logo on LEFT, "Entwurf R&P: [date]" on RIGHT
   const headerChildren: Paragraph[] = [];
 
-  // If we have a logo, create a two-column layout: text left, logo right
   if (options?.logoData) {
     headerChildren.push(
       new Paragraph({
         children: [
-          new TextRun({ text: `Entwurf R&P: ${data.date}`, size: 18, color: "666666" }),
-          new TextRun({ text: "\t" }), // Tab to push logo right
           new ImageRun({
             data: options.logoData,
             transformation: {
@@ -93,6 +91,8 @@ export function createLegalMemoDocument(data: DocxData, options?: TemplateOption
             },
             type: "png",
           }),
+          new TextRun({ text: "\t" }), // Tab to push date right
+          new TextRun({ text: `Entwurf R&P: ${data.date}`, size: 18, color: "666666" }),
         ],
         tabStops: [
           {
@@ -104,13 +104,13 @@ export function createLegalMemoDocument(data: DocxData, options?: TemplateOption
       })
     );
   } else {
-    // No logo, just the text
+    // No logo, just the text on the right
     headerChildren.push(
       new Paragraph({
         children: [
           new TextRun({ text: `Entwurf R&P: ${data.date}`, size: 18, color: "666666" }),
         ],
-        alignment: AlignmentType.LEFT,
+        alignment: AlignmentType.RIGHT,
         spacing: { after: 200 },
       })
     );
