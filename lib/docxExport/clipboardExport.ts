@@ -38,11 +38,11 @@ export async function copyRichToClipboard(
 
 function getHeadingLevel(style: Section["style"]): number {
   switch (style) {
-    case "Memo1":
+    case "H1RP":
       return 1;
-    case "Memo2":
+    case "H2RP":
       return 2;
-    case "Memo3":
+    case "H3RP":
       return 3;
     default:
       return 2;

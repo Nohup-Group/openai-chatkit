@@ -2,7 +2,7 @@ export interface Section {
   heading: string;
   body: string;
   level: string;
-  style: "Memo1" | "Memo2" | "Memo3";
+  style: "H1RP" | "H2RP" | "H3RP";
 }
 
 export interface DocxData {

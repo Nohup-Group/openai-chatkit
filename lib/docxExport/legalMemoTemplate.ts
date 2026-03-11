@@ -4,15 +4,17 @@ import {
   TextRun,
   ImageRun,
   Header,
+  Footer,
   AlignmentType,
-  convertInchesToTwip,
   TabStopPosition,
   TabStopType,
+  PageNumber,
 } from "docx";
 import type { DocxData } from "./types";
 
 export interface TemplateOptions {
   logoData?: ArrayBuffer | null;
+  stylesXml?: string | null;
 }
 
 export function createLegalMemoDocument(data: DocxData, options?: TemplateOptions): Document {
@@ -46,13 +48,15 @@ export function createLegalMemoDocument(data: DocxData, options?: TemplateOption
 
   // SECTIONS
   for (const section of data.sections) {
+    // R&P numbering format: "1." for H1, "1.1" for H2 (no trailing period)
+    const numberText = section.level.includes(".")
+      ? `${section.level} `
+      : `${section.level}. `;
+
     children.push(
       new Paragraph({
         children: [
-          new TextRun({
-            text: `${section.level}. ${section.heading}`,
-            bold: true,
-          }),
+          new TextRun({ text: `${numberText}${section.heading}` }),
         ],
         style: section.style,
       })
@@ -67,20 +71,19 @@ export function createLegalMemoDocument(data: DocxData, options?: TemplateOption
   if (data.sources) {
     children.push(
       new Paragraph({
-        children: [new TextRun({ text: "Quellen", bold: true })],
-        style: "Memo1",
+        children: [new TextRun({ text: "Quellen" })],
+        style: "H1RP",
         spacing: { before: 400, after: 200 },
       })
     );
     children.push(...bodyToParagraphs(data.sources));
   }
 
-  // Create header with logo and date
-  // Layout: Logo on LEFT, "Entwurf R&P: [date]" on RIGHT
-  const headerChildren: Paragraph[] = [];
+  // FIRST PAGE HEADER: Logo left + "Entwurf R&P: [date]" right
+  const firstPageHeaderChildren: Paragraph[] = [];
 
   if (options?.logoData) {
-    headerChildren.push(
+    firstPageHeaderChildren.push(
       new Paragraph({
         children: [
           new ImageRun({
@@ -91,7 +94,7 @@ export function createLegalMemoDocument(data: DocxData, options?: TemplateOption
             },
             type: "png",
           }),
-          new TextRun({ text: "\t" }), // Tab to push date right
+          new TextRun({ text: "\t" }),
           new TextRun({ text: `Entwurf R&P: ${data.date}`, size: 18, color: "666666" }),
         ],
         tabStops: [
@@ -104,8 +107,7 @@ export function createLegalMemoDocument(data: DocxData, options?: TemplateOption
       })
     );
   } else {
-    // No logo, just the text on the right
-    headerChildren.push(
+    firstPageHeaderChildren.push(
       new Paragraph({
         children: [
           new TextRun({ text: `Entwurf R&P: ${data.date}`, size: 18, color: "666666" }),
@@ -116,10 +118,45 @@ export function createLegalMemoDocument(data: DocxData, options?: TemplateOption
     );
   }
 
-  const header = new Header({
-    children: headerChildren,
+  // Footer with page number (8pt, right-aligned, matching template)
+  const pageNumberFooter = new Footer({
+    children: [
+      new Paragraph({
+        children: [new TextRun({ children: [PageNumber.CURRENT], size: 16, font: "Meta Pro" })],
+        alignment: AlignmentType.RIGHT,
+      }),
+    ],
   });
 
+  // Section config shared by both code paths
+  const sectionConfig = {
+    properties: {
+      // R&P template page margins (twips)
+      page: {
+        margin: { top: 1418, right: 1418, bottom: 1134, left: 1418 },
+      },
+      titlePage: true,
+    },
+    headers: {
+      first: new Header({ children: firstPageHeaderChildren }),
+      default: new Header({ children: [] }),
+    },
+    footers: {
+      first: pageNumberFooter,
+      default: pageNumberFooter,
+    },
+    children,
+  };
+
+  if (options?.stylesXml) {
+    // Use the R&P template styles directly
+    return new Document({
+      externalStyles: options.stylesXml,
+      sections: [sectionConfig],
+    });
+  }
+
+  // Fallback: define styles in code when template is unavailable
   return new Document({
     styles: {
       paragraphStyles: [
@@ -127,52 +164,33 @@ export function createLegalMemoDocument(data: DocxData, options?: TemplateOption
           id: "Normal",
           name: "Normal",
           run: { font: "Meta Pro", size: 21 },  // 10.5pt
+          paragraph: {
+            spacing: { after: 240, line: 240 },
+            alignment: AlignmentType.JUSTIFIED,
+          },
+        },
+        {
+          id: "H1RP",
+          name: "H1 R&P",
+          basedOn: "Normal",
+          run: { bold: true },
+          paragraph: { spacing: { before: 360, after: 220, line: 264 } },
+        },
+        {
+          id: "H2RP",
+          name: "H2 R&P",
+          basedOn: "Normal",
           paragraph: { spacing: { after: 220, line: 264 } },
         },
         {
-          id: "Memo1",
-          name: "Memo1",
+          id: "H3RP",
+          name: "H3 R&P",
           basedOn: "Normal",
-          run: { bold: true, size: 24 },  // 12pt headings
-          paragraph: { spacing: { before: 400, after: 200 } },
-        },
-        {
-          id: "Memo2",
-          name: "Memo2",
-          basedOn: "Normal",
-          run: { bold: true, size: 21 },  // 10.5pt
-          paragraph: { spacing: { before: 300, after: 150 } },
-        },
-        {
-          id: "Memo3",
-          name: "Memo3",
-          basedOn: "Normal",
-          run: { bold: true, size: 21 },  // 10.5pt
-          paragraph: { spacing: { before: 200, after: 100 } },
-        },
-        {
-          id: "Zitat",
-          name: "Zitat",
-          basedOn: "Normal",
-          run: { italics: true },
-          paragraph: {
-            indent: { left: convertInchesToTwip(0.5) },
-            spacing: { before: 200, after: 200 },
-          },
+          paragraph: { spacing: { after: 220, line: 264 } },
         },
       ],
     },
-    sections: [
-      {
-        properties: {
-          page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } },
-        },
-        headers: {
-          default: header,
-        },
-        children,
-      },
-    ],
+    sections: [sectionConfig],
   });
 }
 

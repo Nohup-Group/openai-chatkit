@@ -3,6 +3,7 @@ import { createLegalMemoDocument } from "./legalMemoTemplate";
 import type { DocxData } from "./types";
 
 const LOGO_URL = "/template/rup-logo.png";
+const STYLES_URL = "/template/rp-styles.xml";
 
 async function fetchLogo(): Promise<ArrayBuffer | null> {
   try {
@@ -18,11 +19,27 @@ async function fetchLogo(): Promise<ArrayBuffer | null> {
   }
 }
 
-export async function generateAndDownloadDocx(data: DocxData): Promise<void> {
-  // Fetch logo in parallel with document preparation
-  const logoData = await fetchLogo();
+async function fetchStyles(): Promise<string | null> {
+  try {
+    const response = await fetch(STYLES_URL);
+    if (!response.ok) {
+      console.warn("Failed to fetch styles:", response.status);
+      return null;
+    }
+    const xml = await response.text();
+    // Strip numbering references — we handle heading numbers manually in text
+    return xml.replace(/<w:numPr>[\s\S]*?<\/w:numPr>/g, "");
+  } catch (error) {
+    console.warn("Error fetching styles:", error);
+    return null;
+  }
+}
 
-  const doc = createLegalMemoDocument(data, { logoData });
+export async function generateAndDownloadDocx(data: DocxData): Promise<void> {
+  // Fetch logo and R&P styles in parallel
+  const [logoData, stylesXml] = await Promise.all([fetchLogo(), fetchStyles()]);
+
+  const doc = createLegalMemoDocument(data, { logoData, stylesXml });
   const blob = await Packer.toBlob(doc);
 
   // Create clean filename (max 50 chars, replace problematic chars)

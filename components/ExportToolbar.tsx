@@ -59,6 +59,14 @@ export function ExportToolbar() {
 
   return (
     <div ref={menuRef} className="relative">
+      {/* Invisible backdrop to close menu on outside click */}
+      {open && (
+        <div
+          className="fixed inset-0 z-[-1]"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
       {/* Floating action button */}
       <button
         onClick={() => setOpen(!open)}

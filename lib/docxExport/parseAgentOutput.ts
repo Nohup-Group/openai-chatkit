@@ -105,7 +105,7 @@ export function parseAgentOutput(text: string, threadTitle?: string | null): Doc
         heading: heading.text,
         body,
         level: String(mainSectionCount),
-        style: "Memo1",
+        style: "H1RP",
       });
     } else if (heading.type === "h3") {
       // Subsection (### Fristlose Kündigung...)
@@ -116,7 +116,7 @@ export function parseAgentOutput(text: string, threadTitle?: string | null): Doc
         heading: heading.text,
         body,
         level: mainSectionCount > 0 ? `${mainSectionCount}.${subSectionCount}` : String(subSectionCount),
-        style: "Memo2",
+        style: "H2RP",
       });
     } else if (heading.type === "h4") {
       // Sub-subsection (#### Tragfähigen...)
@@ -132,7 +132,7 @@ export function parseAgentOutput(text: string, threadTitle?: string | null): Doc
         heading: heading.text,
         body,
         level,
-        style: "Memo3",
+        style: "H3RP",
       });
     }
   }
