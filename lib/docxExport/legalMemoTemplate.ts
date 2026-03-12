@@ -31,12 +31,13 @@ export function createLegalMemoDocument(data: DocxData, options?: TemplateOption
     );
   }
   children.push(
-    new Paragraph({ text: "", spacing: { after: 400 } }), // Space after header
+    new Paragraph({ text: "", spacing: { after: 220, line: 264 } }), // Space after header
     new Paragraph({
       children: titleRuns,
       alignment: AlignmentType.CENTER,
-      spacing: { after: 400, line: 264 },
-    })
+      spacing: { after: 220, line: 264 },
+    }),
+    new Paragraph({ text: "", spacing: { after: 220, line: 264 } }), // Spacer before body
   );
 
   // EXECUTIVE SUMMARY
