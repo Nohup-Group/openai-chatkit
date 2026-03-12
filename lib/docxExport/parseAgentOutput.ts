@@ -72,15 +72,45 @@ export function parseAgentOutput(text: string, threadTitle?: string | null): Doc
   const firstSectionIdx = headings.findIndex(h => h.type === firstSectionType);
   const firstSectionLineIdx = firstSectionIdx >= 0 ? headings[firstSectionIdx].idx : -1;
 
-  // Extract executive summary (everything before first section heading)
+  // Extract intro block (everything before first section heading)
+  // Split into: title lines (before first blank line) and executive summary (after)
+  let title = "Rechtsgutachten";
+  let subtitle: string | undefined;
   let executiveSummary: string | undefined;
+
   if (firstSectionLineIdx > 0) {
     const introLines = lines.slice(0, firstSectionLineIdx);
-    executiveSummary = cleanMarkdown(introLines.join("\n").trim()) || undefined;
-  }
+    const introText = introLines.join("\n").trim();
 
-  // Use thread title from ChatKit API, or fall back to default
-  const title = threadTitle || "Rechtsgutachten";
+    // Split at first blank line: title block vs executive summary
+    const blankLineIdx = introText.indexOf("\n\n");
+    if (blankLineIdx >= 0) {
+      const titleBlock = introText.slice(0, blankLineIdx).trim();
+      const summaryBlock = introText.slice(blankLineIdx).trim();
+
+      // Title block: first line is title, remaining lines are subtitle
+      const titleLines = titleBlock.split("\n").map(l => l.trim()).filter(Boolean);
+      if (titleLines.length > 0) {
+        title = titleLines[0];
+        if (titleLines.length > 1) {
+          subtitle = titleLines.slice(1).join("\n");
+        }
+      }
+
+      executiveSummary = cleanMarkdown(summaryBlock) || undefined;
+    } else {
+      // No blank line — entire intro is the title block
+      const titleLines = introText.split("\n").map(l => l.trim()).filter(Boolean);
+      if (titleLines.length > 0) {
+        title = titleLines[0];
+        if (titleLines.length > 1) {
+          subtitle = titleLines.slice(1).join("\n");
+        }
+      }
+    }
+  } else if (threadTitle) {
+    title = threadTitle;
+  }
 
   // Parse sections with hierarchy
   // When agent uses #/##/###: # → H1RP, ## → H2RP, ### → H3RP
@@ -161,7 +191,8 @@ export function parseAgentOutput(text: string, threadTitle?: string | null): Doc
   }
 
   return {
-    report_title: title.slice(0, 80),
+    report_title: title.slice(0, 120),
+    subtitle,
     date: new Date().toLocaleDateString("de-DE", { day: "numeric", month: "long", year: "numeric" }),
     executiveSummary,
     sections,
