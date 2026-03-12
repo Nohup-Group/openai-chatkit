@@ -43,7 +43,6 @@ export function createLegalMemoDocument(data: DocxData, options?: TemplateOption
   // EXECUTIVE SUMMARY
   if (data.executiveSummary) {
     children.push(...bodyToParagraphs(data.executiveSummary));
-    children.push(new Paragraph({ text: "", spacing: { after: 200 } }));
   }
 
   // SECTIONS
