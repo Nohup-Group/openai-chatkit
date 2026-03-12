@@ -20,25 +20,24 @@ export interface TemplateOptions {
 export function createLegalMemoDocument(data: DocxData, options?: TemplateOptions): Document {
   const children: Paragraph[] = [];
 
-  // TITLE BLOCK
+  // TITLE BLOCK — centered, non-bold, 12pt, matching Call Option doc format
+  const titleRuns: TextRun[] = [
+    new TextRun({ text: data.report_title, size: 24 }),
+  ];
+  if (data.subtitle) {
+    titleRuns.push(
+      new TextRun({ text: "", break: 1 }),
+      new TextRun({ text: data.subtitle, size: 24 }),
+    );
+  }
   children.push(
     new Paragraph({ text: "", spacing: { after: 400 } }), // Space after header
     new Paragraph({
-      children: [new TextRun({ text: data.report_title, size: 28, bold: true })],
+      children: titleRuns,
       alignment: AlignmentType.CENTER,
-      spacing: { after: 220, line: 264 },
+      spacing: { after: 400, line: 264 },
     })
   );
-
-  if (data.subtitle) {
-    children.push(
-      new Paragraph({
-        children: [new TextRun({ text: data.subtitle, size: 24 })],
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 400 },
-      })
-    );
-  }
 
   // EXECUTIVE SUMMARY
   if (data.executiveSummary) {
@@ -89,8 +88,8 @@ export function createLegalMemoDocument(data: DocxData, options?: TemplateOption
           new ImageRun({
             data: options.logoData,
             transformation: {
-              width: 140,
-              height: 25,
+              width: 134,
+              height: 34,
             },
             type: "png",
           }),
