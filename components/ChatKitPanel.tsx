@@ -100,6 +100,8 @@ export function ChatKitPanel({
   });
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>("prompts");
   const [, setUsageByModel] = useState<Record<string, AggregatedModelUsage>>({});
+  const [hasExportableMemo, setHasExportableMemo] = useState(false);
+  const [isResponseInProgress, setIsResponseInProgress] = useState(false);
 
   const setErrorState = useCallback((updates: Partial<ErrorState>) => {
     setErrors((current) => ({ ...current, ...updates }));
@@ -238,6 +240,8 @@ export function ChatKitPanel({
     setIsInitializingSession(true);
     setErrors(createInitialErrors());
     setWidgetInstanceKey((prev) => prev + 1);
+    setHasExportableMemo(false);
+    setIsResponseInProgress(false);
   }, [clearUsageTracking]);
 
   const getClientSecret = useCallback(
@@ -402,6 +406,8 @@ export function ChatKitPanel({
     onResponseEnd: (event: unknown) => {
       const detail = event as ResponseEndDetail | undefined;
       responseCountRef.current += 1;
+      setIsResponseInProgress(false);
+      setHasExportableMemo(true);
       let usagePayload = extractUsageFromResponse(detail);
       const usageFromDetail = Boolean(usagePayload);
       if (!usagePayload && pendingUsageQueueRef.current.length > 0) {
@@ -423,6 +429,14 @@ export function ChatKitPanel({
           processedResponseIdsRef.current.clear();
         }
       }
+      console.info("[ChatKitPanel] response:end", {
+        responseCount: responseCountRef.current,
+        threadId:
+          currentThreadIdRef.current === THREADLESS_ID
+            ? null
+            : maskLogId(currentThreadIdRef.current),
+        hasUsage: Boolean(usagePayload),
+      });
       onResponseEnd(
         sessionIdRef.current ?? undefined,
         usagePayload,
@@ -432,12 +446,28 @@ export function ChatKitPanel({
       );
     },
     onResponseStart: () => {
+      setIsResponseInProgress(true);
+      console.info("[ChatKitPanel] response:start", {
+        threadId:
+          currentThreadIdRef.current === THREADLESS_ID
+            ? null
+            : maskLogId(currentThreadIdRef.current),
+      });
       setErrorState({ integration: null, retryable: false });
     },
     onThreadChange: ({ threadId }: { threadId: string | null }) => {
+      console.info("[ChatKitPanel] thread:change", {
+        threadId: threadId ? maskLogId(threadId) : null,
+      });
       processedFacts.current.clear();
       pendingUsageQueueRef.current = [];
       processedResponseIdsRef.current.clear();
+      if (!threadId) {
+        setIsResponseInProgress(false);
+        setHasExportableMemo(false);
+      } else {
+        setHasExportableMemo(true);
+      }
       switchToThread(threadId);
     },
     onError: ({ error }: { error: unknown }) => {
@@ -464,6 +494,16 @@ export function ChatKitPanel({
 
   const activeError = errors.session ?? errors.integration;
   const blockingError = errors.script ?? activeError;
+  const exportDisabledReason =
+    blockingError
+      ? "Export erst nach erfolgreicher Sitzung verfügbar."
+      : isInitializingSession
+        ? "Export wird vorbereitet."
+        : isResponseInProgress
+          ? "Antwort wird noch erstellt."
+          : !hasExportableMemo
+            ? "Nach der ersten Antwort verfügbar."
+            : undefined;
 
   if (isDev) {
     console.debug("[ChatKitPanel] render state", {
@@ -522,7 +562,10 @@ export function ChatKitPanel({
 
       <div className="relative flex flex-1 flex-col overflow-hidden rounded-2xl bg-white pb-8 shadow-xl transition-colors">
         <div className="absolute bottom-24 right-6 z-10">
-          <ExportToolbar />
+          <ExportToolbar
+            canExport={!exportDisabledReason}
+            disabledReason={exportDisabledReason}
+          />
         </div>
         <ChatKit
           key={widgetInstanceKey}
@@ -726,4 +769,9 @@ function readNumber(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object";
+}
+
+function maskLogId(value: string): string {
+  if (value.length <= 10) return "***";
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
 }

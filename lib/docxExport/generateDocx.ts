@@ -1,5 +1,6 @@
 import { Packer } from "docx";
 import { createLegalMemoDocument } from "./legalMemoTemplate";
+import { buildDocxFilename } from "./filename";
 import type { DocxData } from "./types";
 
 const LOGO_URL = "/template/rup-logo.png";
@@ -42,15 +43,7 @@ export async function generateAndDownloadDocx(data: DocxData): Promise<void> {
   const doc = createLegalMemoDocument(data, { logoData, stylesXml });
   const blob = await Packer.toBlob(doc);
 
-  // Create clean filename (max 50 chars, replace problematic chars)
-  const cleanTitle = data.report_title
-    .slice(0, 50)
-    .replace(/[^a-zA-Z0-9äöüÄÖÜß\s-]/g, "")
-    .replace(/\s+/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_|_$/g, "");
-
-  const filename = `${cleanTitle}_${data.date}.docx`;
+  const filename = buildDocxFilename(data.report_title, data.date);
 
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

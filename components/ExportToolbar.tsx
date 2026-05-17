@@ -1,15 +1,19 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import {
-  parseAgentOutput,
-  generateAndDownloadDocx,
-  copyRichToClipboard,
-} from "@/lib/docxExport";
+import { parseAgentOutput } from "@/lib/docxExport/parseAgentOutput";
+import { copyRichToClipboard } from "@/lib/docxExport/clipboardExport";
 
 type Status = "idle" | "loading" | "success" | "error";
 
-export function ExportToolbar() {
+const DOCX_EXPORT_URL = "/api/export/docx";
+
+type ExportToolbarProps = {
+  canExport: boolean;
+  disabledReason?: string;
+};
+
+export function ExportToolbar({ canExport, disabledReason }: ExportToolbarProps) {
   const [status, setStatus] = useState<Status>("idle");
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -26,7 +30,41 @@ export function ExportToolbar() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
-  const handleExport = async (mode: "docx" | "clipboard") => {
+  const resetStatusSoon = (delayMs = 2000) => {
+    setTimeout(() => setStatus("idle"), delayMs);
+  };
+
+  const isBusy = status === "loading";
+  const actionsEnabled = canExport && !isBusy;
+  const menuMessage =
+    status === "error"
+      ? "Export fehlgeschlagen"
+      : status === "loading"
+        ? "Download wird vorbereitet"
+        : disabledReason;
+
+  const handleDocxDownload = () => {
+    console.info("[ExportToolbar] DOCX download requested", {
+      canExport,
+      disabledReason: disabledReason ?? null,
+    });
+    setOpen(false);
+    setStatus("loading");
+    resetStatusSoon(3000);
+  };
+
+  const handleClipboardExport = async () => {
+    console.info("[ExportToolbar] Clipboard export requested", {
+      canExport,
+      disabledReason: disabledReason ?? null,
+    });
+
+    if (!actionsEnabled) {
+      setStatus("error");
+      resetStatusSoon();
+      return;
+    }
+
     setOpen(false);
     setStatus("loading");
 
@@ -37,23 +75,22 @@ export function ExportToolbar() {
       if (!res.ok || !result.text) {
         console.error("Failed to get thread content:", result.error);
         setStatus("error");
-        setTimeout(() => setStatus("idle"), 2000);
+        resetStatusSoon();
         return;
       }
 
       const data = parseAgentOutput(result.text, result.threadTitle);
 
-      if (mode === "docx") {
-        await generateAndDownloadDocx(data);
-      } else {
-        await copyRichToClipboard(data.sections);
-      }
+      await copyRichToClipboard(data.sections);
+      console.info("[ExportToolbar] Clipboard export completed", {
+        sectionCount: data.sections.length,
+      });
       setStatus("success");
-      setTimeout(() => setStatus("idle"), 2000);
+      resetStatusSoon();
     } catch (err) {
       console.error("Export error:", err);
       setStatus("error");
-      setTimeout(() => setStatus("idle"), 2000);
+      resetStatusSoon();
     }
   };
 
@@ -70,8 +107,13 @@ export function ExportToolbar() {
       {/* Floating action button */}
       <button
         onClick={() => setOpen(!open)}
-        className="w-9 h-9 flex items-center justify-center rounded-full bg-[#bb0a30] text-white shadow-lg hover:bg-[#9a0828] transition-colors"
+        className={`w-9 h-9 flex items-center justify-center rounded-full text-white shadow-lg transition-colors ${
+          actionsEnabled
+            ? "bg-[#bb0a30] hover:bg-[#9a0828]"
+            : "bg-gray-400 hover:bg-gray-500"
+        }`}
         aria-label="Export"
+        title={disabledReason ?? "Export"}
       >
         {status === "loading" ? (
           <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -96,18 +138,39 @@ export function ExportToolbar() {
       {/* Dropdown menu */}
       {open && (
         <div className="absolute bottom-full right-0 mb-2 flex flex-col gap-1 bg-white rounded-lg shadow-xl border border-gray-200 p-1.5 min-w-[130px]">
+          {actionsEnabled ? (
+            <a
+              href={DOCX_EXPORT_URL}
+              onClick={handleDocxDownload}
+              className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded transition-colors text-left"
+            >
+              DOCX Download
+            </a>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="px-3 py-1.5 text-sm font-medium text-gray-400 rounded text-left cursor-not-allowed"
+            >
+              DOCX Download
+            </button>
+          )}
           <button
-            onClick={() => handleExport("docx")}
-            className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded transition-colors text-left"
-          >
-            DOCX Download
-          </button>
-          <button
-            onClick={() => handleExport("clipboard")}
-            className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded transition-colors text-left"
+            onClick={handleClipboardExport}
+            disabled={!actionsEnabled}
+            className={`px-3 py-1.5 text-sm font-medium rounded transition-colors text-left ${
+              actionsEnabled
+                ? "text-gray-700 hover:bg-gray-100"
+                : "text-gray-400 cursor-not-allowed"
+            }`}
           >
             Kopieren
           </button>
+          {menuMessage && (
+            <div className="max-w-[180px] px-3 pb-1 pt-1 text-xs leading-snug text-gray-500">
+              {menuMessage}
+            </div>
+          )}
         </div>
       )}
     </div>
