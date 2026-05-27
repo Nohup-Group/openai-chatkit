@@ -1,9 +1,11 @@
 import { ColorScheme, StartScreenPrompt, ThemeOption } from "@openai/chatkit";
 
-export const WORKFLOW_ID =
-  process.env.NEXT_PUBLIC_CHATKIT_WORKFLOW_ID?.trim() ?? "";
+export const CHATKIT_API_URL =
+  process.env.NEXT_PUBLIC_CHATKIT_API_URL?.trim() ??
+  "http://localhost:8000/chatkit";
 
-export const CREATE_SESSION_ENDPOINT = "/api/create-session";
+export const CHATKIT_DOMAIN_KEY =
+  process.env.NEXT_PUBLIC_CHATKIT_DOMAIN_KEY?.trim() ?? "local-dev";
 
 export const STARTER_PROMPTS: StartScreenPrompt[] = [
   {
@@ -17,12 +19,12 @@ export const PLACEHOLDER_INPUT = "schlaue Rechtsfrage...";
 
 export const GREETING = "Wie kann ich Ihnen helfen, liebe RuP-Mitarbeitenden?";
 
-export const getThemeConfig = (_theme: ColorScheme): ThemeOption => ({
+export const getThemeConfig = (theme: ColorScheme): ThemeOption => ({
   color: {
     grayscale: {
       hue: 0,
-      tint: 8,
-      shade: -4,
+      tint: theme === "dark" ? 4 : 8,
+      shade: theme === "dark" ? -2 : -4,
     },
     accent: {
       primary: "#bb0a30",
