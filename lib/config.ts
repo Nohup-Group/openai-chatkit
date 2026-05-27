@@ -1,4 +1,4 @@
-import { ColorScheme, StartScreenPrompt, ThemeOption } from "@openai/chatkit";
+import { ColorScheme, ThemeOption } from "@openai/chatkit";
 
 export const CHATKIT_API_URL =
   process.env.NEXT_PUBLIC_CHATKIT_API_URL?.trim() ??
@@ -6,14 +6,6 @@ export const CHATKIT_API_URL =
 
 export const CHATKIT_DOMAIN_KEY =
   process.env.NEXT_PUBLIC_CHATKIT_DOMAIN_KEY?.trim() ?? "local-dev";
-
-export const STARTER_PROMPTS: StartScreenPrompt[] = [
-  {
-    label: "Was kannst du tun?",
-    prompt: "Was kannst du tun?",
-    icon: "circle-question",
-  },
-];
 
 export const PLACEHOLDER_INPUT = "schlaue Rechtsfrage...";
 

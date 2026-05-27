@@ -12,7 +12,7 @@ ChatKit API protocol instead of creating OpenAI-hosted workflow sessions.
 
 - Next.js app with `<openai-chatkit>` web component and theming controls
 - Custom ChatKit API configuration in [`components/ChatKitPanel.tsx`](components/ChatKitPanel.tsx)
-- Config file for starter prompts, theme, placeholder text, and greeting message
+- Config file for theme, placeholder text, and greeting message
 
 ## Getting Started
 
@@ -51,5 +51,5 @@ Before deploying your app, verify the domain by adding it to the OpenAI domain a
 
 ## Customization Tips
 
-- Adjust starter prompts, greeting text, ChatKit theme, and placeholder copy in [`lib/config.ts`](lib/config.ts).
+- Adjust greeting text, ChatKit theme, and placeholder copy in [`lib/config.ts`](lib/config.ts).
 - Update the event handlers inside [`components/ChatKitPanel.tsx`](components/ChatKitPanel.tsx) to integrate with your product analytics or storage.
